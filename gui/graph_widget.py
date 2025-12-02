@@ -14,9 +14,9 @@ class VertexItem(QGraphicsItemGroup):
         super().__init__(parent)
         self.vertex_id = vertex_id
         self.setPos(pos)
-        self.setFlag(QGraphicsItem.ItemIsMovable, True)
         self.setFlag(QGraphicsItem.ItemIsSelectable, True)
         self.setFlag(QGraphicsItem.ItemSendsGeometryChanges, True)
+        self.is_movable = True  # Nouveau: contrôle du déplacement
         
         # Créer le cercle
         self.circle = QGraphicsEllipseItem(QRectF(-20, -20, 40, 40), self)
@@ -27,7 +27,7 @@ class VertexItem(QGraphicsItemGroup):
         # Créer le texte
         self.text = QGraphicsTextItem(vertex_id, self)
         self.text.setDefaultTextColor(Qt.white)
-        self.text.setFont(QFont("Arial", 10, QFont.Bold))
+        self.text.setFont(QFont("Arial", 12, QFont.Bold))  # Augmenté de 10 à 12
         # Centrer le texte
         text_rect = self.text.boundingRect()
         self.text.setPos(-text_rect.width()/2, -text_rect.height()/2)
@@ -41,8 +41,19 @@ class VertexItem(QGraphicsItemGroup):
         self.vertex_type = 'normal'
         self.cost = 1.0
         
+    def set_movable(self, movable):
+        """Active ou désactive le déplacement du sommet"""
+        self.is_movable = movable
+        self.setFlag(QGraphicsItem.ItemIsMovable, movable)
+        
     def mousePressEvent(self, event):
         """Gère le clic sur le sommet"""
+        # Ne pas déplacer si on est en mode ajout d'arête
+        if hasattr(self.scene().parent(), 'current_mode'):
+            if self.scene().parent().current_mode == 'add_edge':
+                event.accept()  # Accepter l'événement mais ne pas déplacer
+                return
+                
         self.is_selected = True
         self.circle.setBrush(QBrush(QColor(255, 215, 0)))  # Or quand sélectionné
         super().mousePressEvent(event)
@@ -109,6 +120,7 @@ class GraphWidget(QWidget):
         self.current_mode = 'select'  # 'add_vertex', 'add_edge', 'critical', 'delete'
         self.temp_edge_start = None
         self.temp_edge_item = None
+        self.first_vertex_selected = None  # Pour la création d'arête
         
         self.create_ui()
         self.setup_scene()
@@ -168,11 +180,15 @@ class GraphWidget(QWidget):
                     background-color: #f3f4f6;
                 }}
             """)
-            btn.toggled.connect(lambda checked, m=mode: self.set_mode(m) if checked else None)
+            # Only call set_mode when the view is initialized to avoid
+            # AttributeError during widget construction where set_mode
+            # accesses `self.view`.
+            btn.toggled.connect(lambda checked, m=mode: self.set_mode(m) if (checked and hasattr(self, 'view')) else None)
             mode_group.addButton(btn)
             toolbar_layout.addWidget(btn)
             self.mode_buttons[mode] = btn
         
+        self.mode_buttons['select'].setChecked(True)
         
         toolbar_layout.addStretch()
         
@@ -229,7 +245,7 @@ class GraphWidget(QWidget):
             }
         """)
         
-        self.help_label = QLabel("Conseil : Cliquez pour ajouter des sommets, cliquez sur deux sommets pour créer une arête")
+        self.help_label = QLabel("Mode Sélection : Cliquez pour sélectionner, glissez pour déplacer")
         self.help_label.setStyleSheet("""
             QLabel {
                 color: #9ca3af;
@@ -243,10 +259,6 @@ class GraphWidget(QWidget):
         info_layout.addWidget(self.help_label)
         
         layout.addWidget(info_widget)
-
-        # Set default mode after view and info widgets exist so
-        # set_mode can safely access `self.view` and `self.help_label`.
-        self.mode_buttons['select'].setChecked(True)
     
     def setup_scene(self):
         """Configure la scène graphique"""
@@ -258,25 +270,64 @@ class GraphWidget(QWidget):
     
     def set_mode(self, mode):
         """Change le mode d'interaction"""
+        old_mode = self.current_mode
         self.current_mode = mode
+        
+        # Réinitialiser la sélection d'arête
+        if old_mode == 'add_edge' and mode != 'add_edge':
+            self.reset_edge_selection()
+        
         if mode == 'select':
             self.view.setDragMode(QGraphicsView.RubberBandDrag)
             self.temp_edge_start = None
             if self.temp_edge_item:
                 self.scene.removeItem(self.temp_edge_item)
                 self.temp_edge_item = None
+            
+            # Activer le déplacement des sommets
+            for vertex in self.vertices.values():
+                vertex.set_movable(True)
+            
+            self.help_label.setText("Mode Sélection : Cliquez pour sélectionner, glissez pour déplacer")
+            
+        elif mode == 'add_edge':
+            self.view.setDragMode(QGraphicsView.NoDrag)
+            # Désactiver le déplacement des sommets
+            for vertex in self.vertices.values():
+                vertex.set_movable(False)
+            
+            self.help_label.setText("Mode Ajout d'Arête : Cliquez sur un premier sommet (il devient jaune), puis sur un deuxième sommet")
+            
         else:
             self.view.setDragMode(QGraphicsView.NoDrag)
+            # Désactiver le déplacement des sommets pour les autres modes
+            for vertex in self.vertices.values():
+                vertex.set_movable(False)
+            
+            # Mettre à jour l'aide
+            help_texts = {
+                'add_vertex': "Mode Ajout de Sommet : Cliquez n'importe où pour ajouter un sommet",
+                'critical': "Mode Arête Critique : Cliquez sur une arête pour la marquer comme critique (rouge)",
+                'delete': "Mode Suppression : Cliquez sur un élément pour le supprimer"
+            }
+            self.help_label.setText(f"Conseil : {help_texts.get(mode, '')}")
         
-        # Mettre à jour l'aide
-        help_texts = {
-            'select': "Mode sélection : Cliquez et glissez pour sélectionner, déplacez les sommets",
-            'add_vertex': "Mode ajout de sommet : Cliquez n'importe où pour ajouter un sommet",
-            'add_edge': "Mode ajout d'arête : Cliquez sur un sommet, puis sur un autre",
-            'critical': "Mode arête critique : Cliquez sur une arête pour la marquer comme critique",
-            'delete': "Mode suppression : Cliquez sur un élément pour le supprimer"
-        }
-        self.help_label.setText(f"Conseil : {help_texts.get(mode, '')}")
+        # Mettre à jour les couleurs des sommets
+        for vertex in self.vertices.values():
+            vertex.set_type(vertex.vertex_type)
+    
+    def reset_edge_selection(self):
+        """Réinitialise la sélection pour la création d'arête"""
+        if self.first_vertex_selected:
+            # Réinitialiser la couleur du premier sommet sélectionné
+            self.first_vertex_selected.circle.setBrush(QBrush(QColor(70, 130, 180)))
+            self.first_vertex_selected = None
+        
+        if self.temp_edge_item:
+            self.scene.removeItem(self.temp_edge_item)
+            self.temp_edge_item = None
+        
+        self.temp_edge_start = None
     
     def on_scene_click(self, event):
         """Gère les clics sur la scène"""
@@ -284,12 +335,39 @@ class GraphWidget(QWidget):
         
         if self.current_mode == 'add_vertex':
             self.add_vertex_at(pos)
+            
         elif self.current_mode == 'add_edge':
-            self.handle_edge_click(pos)
+            # Trouver le sommet cliqué
+            vertex = self.find_vertex_at(pos)
+            
+            if vertex:
+                if self.first_vertex_selected is None:
+                    # Premier sommet sélectionné
+                    self.first_vertex_selected = vertex
+                    self.temp_edge_start = vertex.scenePos()
+                    
+                    # Colorier le sommet en jaune
+                    vertex.circle.setBrush(QBrush(QColor(255, 215, 0)))
+                    
+                    # Afficher un message d'aide
+                    self.help_label.setText("Maintenant cliquez sur un deuxième sommet pour créer l'arête")
+                    
+                else:
+                    # Deuxième sommet sélectionné
+                    if self.first_vertex_selected != vertex:
+                        # Créer l'arête
+                        self.add_edge(self.first_vertex_selected.vertex_id, vertex.vertex_id)
+                    
+                    # Réinitialiser la sélection
+                    self.reset_edge_selection()
+                    self.help_label.setText("Mode Ajout d'Arête : Cliquez sur un premier sommet (il devient jaune), puis sur un deuxième sommet")
+        
         elif self.current_mode == 'critical':
             self.toggle_edge_critical(pos)
+            
         elif self.current_mode == 'delete':
             self.delete_item_at(pos)
+            
         elif self.current_mode == 'select':
             # La sélection normale fonctionne
             pass
@@ -299,8 +377,10 @@ class GraphWidget(QWidget):
     
     def on_scene_mouse_move(self, event):
         """Gère le mouvement de la souris (pour l'arête temporaire)"""
-        if self.current_mode == 'add_edge' and self.temp_edge_start:
+        if self.current_mode == 'add_edge' and self.first_vertex_selected:
             pos = event.scenePos()
+            
+            # Mettre à jour ou créer la ligne temporaire
             if self.temp_edge_item:
                 self.scene.removeItem(self.temp_edge_item)
             
@@ -315,9 +395,8 @@ class GraphWidget(QWidget):
     
     def on_scene_mouse_release(self, event):
         """Gère le relâchement de la souris"""
-        if self.temp_edge_item and self.current_mode != 'add_edge':
-            self.scene.removeItem(self.temp_edge_item)
-            self.temp_edge_item = None
+        # Pour le mode ajout d'arête, on ne fait rien ici
+        # Le traitement est dans on_scene_click
         
         QGraphicsScene.mouseReleaseEvent(self.scene, event)
     
@@ -328,6 +407,10 @@ class GraphWidget(QWidget):
         
         # Créer l'item de sommet
         vertex = VertexItem(vertex_id, pos)
+        
+        # Définir si le sommet est déplaçable selon le mode
+        vertex.set_movable(self.current_mode == 'select')
+        
         self.scene.addItem(vertex)
         
         # Stocker la référence
@@ -336,33 +419,7 @@ class GraphWidget(QWidget):
         self.update_info()
         self.graph_changed.emit(self.get_graph_data())
     
-    def handle_edge_click(self, pos):
-        """Gère les clics pour créer des arêtes"""
-        # Chercher le sommet le plus proche
-        vertex = self.find_vertex_at(pos)
-        
-        if vertex:
-            if self.temp_edge_start is None:
-                # Premier sommet sélectionné
-                self.temp_edge_start = vertex.scenePos()
-                vertex.setSelected(True)
-            else:
-                # Deuxième sommet : créer l'arête
-                start_vertex = self.find_vertex_at(self.temp_edge_start)
-                if start_vertex and start_vertex != vertex:
-                    self.add_edge(start_vertex.vertex_id, vertex.vertex_id)
-                
-                # Réinitialiser
-                if start_vertex:
-                    start_vertex.setSelected(False)
-                self.temp_edge_start = None
-                
-                # Supprimer la ligne temporaire
-                if self.temp_edge_item:
-                    self.scene.removeItem(self.temp_edge_item)
-                    self.temp_edge_item = None
-    
-    def find_vertex_at(self, pos, radius=30):
+    def find_vertex_at(self, pos, radius=40):
         """Trouve le sommet le plus proche d'une position"""
         for vertex in self.vertices.values():
             vertex_pos = vertex.scenePos()
@@ -481,6 +538,7 @@ class GraphWidget(QWidget):
         self.vertices.clear()
         self.edges.clear()
         self.next_vertex_id = 1
+        self.first_vertex_selected = None
         self.temp_edge_start = None
         self.temp_edge_item = None
         self.update_info()

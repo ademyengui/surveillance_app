@@ -3,6 +3,7 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout,
                              QPushButton, QLabel, QSpinBox, QComboBox,
                              QCheckBox, QHeaderView)
 from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtGui import QFont
 
 class ParametersWidget(QWidget):
     solve_clicked = pyqtSignal()
@@ -41,28 +42,71 @@ class ParametersWidget(QWidget):
         self.costs_table.setColumnCount(3)
         self.costs_table.setHorizontalHeaderLabels(["Sommet", "Coût (€)", "Type"])
         self.costs_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.costs_table.setMaximumHeight(200)
+        self.costs_table.setMaximumHeight(250)
         
-        # Style de la table
+        # Style de la table - AMÉLIORÉ pour meilleure lisibilité
         self.costs_table.setStyleSheet("""
             QTableWidget {
                 background-color: white;
-                border: 1px solid #e5e7eb;
+                border: 2px solid #d1d5db;
                 border-radius: 6px;
+                gridline-color: #e5e7eb;
             }
             QTableWidget::item {
-                padding: 8px;
+                padding: 10px;
+                border-bottom: 1px solid #f3f4f6;
+                color: #111827;
+                font-size: 13px;
+            }
+            QTableWidget::item:selected {
+                background-color: #3b82f6;
+                color: white;
+                font-weight: bold;
             }
             QHeaderView::section {
                 background-color: #f3f4f6;
                 font-weight: 600;
-                padding: 10px;
+                font-size: 13px;
+                padding: 12px 8px;
                 border: none;
                 border-bottom: 2px solid #d1d5db;
+                color: #111827;
+            }
+            QTableWidget QComboBox {
+                font-size: 13px;
+                padding: 6px;
+                border: 1px solid #d1d5db;
+                border-radius: 4px;
+                background-color: white;
+                color: #111827;
+            }
+            QTableWidget QComboBox::drop-down {
+                border: none;
+            }
+            QTableWidget QComboBox::down-arrow {
+                image: none;
+                border-left: 1px solid #d1d5db;
+                padding: 0 8px;
             }
         """)
         
+        # Définir une police plus lisible
+        font = QFont("Segoe UI", 11)
+        self.costs_table.setFont(font)
+        
         costs_layout.addWidget(self.costs_table)
+        
+        # Instructions sous la table
+        instructions = QLabel("Double-cliquez sur une cellule pour modifier le coût")
+        instructions.setStyleSheet("""
+            QLabel {
+                color: #6b7280;
+                font-size: 11px;
+                font-style: italic;
+                padding-top: 5px;
+            }
+        """)
+        costs_layout.addWidget(instructions)
         
         self.costs_group.setLayout(costs_layout)
         layout.addWidget(self.costs_group)
@@ -77,7 +121,7 @@ class ParametersWidget(QWidget):
         budget_layout.setContentsMargins(0, 0, 0, 0)
         
         budget_label = QLabel("Budget maximum :")
-        budget_label.setStyleSheet("font-weight: 500;")
+        budget_label.setStyleSheet("font-weight: 500; font-size: 13px;")
         
         self.budget_spin = QSpinBox()
         self.budget_spin.setRange(0, 1000000)
@@ -89,15 +133,21 @@ class ParametersWidget(QWidget):
                 padding: 8px;
                 border: 2px solid #d1d5db;
                 border-radius: 6px;
-                min-width: 100px;
+                min-width: 120px;
+                font-size: 13px;
+                color: #111827;
             }
             QSpinBox:focus {
                 border-color: #3b82f6;
             }
+            QSpinBox::up-button, QSpinBox::down-button {
+                width: 20px;
+                border-left: 1px solid #d1d5db;
+            }
         """)
         
         budget_unit = QLabel("€")
-        budget_unit.setStyleSheet("color: #6b7280;")
+        budget_unit.setStyleSheet("color: #6b7280; font-size: 13px;")
         
         budget_layout.addWidget(budget_label)
         budget_layout.addWidget(self.budget_spin)
@@ -111,18 +161,45 @@ class ParametersWidget(QWidget):
         self.advanced_check.setStyleSheet("""
             QCheckBox {
                 font-weight: 500;
+                font-size: 13px;
                 padding: 8px 0;
+                color: #111827;
+            }
+            QCheckBox::indicator {
+                width: 18px;
+                height: 18px;
             }
         """)
         self.advanced_check.toggled.connect(self.toggle_advanced)
         constraints_layout.addWidget(self.advanced_check)
         
         # Options avancées (cachées par défaut)
-        self.advanced_group = QGroupBox()
+        self.advanced_group = QGroupBox("Options avancées")
+        self.advanced_group.setStyleSheet("""
+            QGroupBox {
+                font-weight: 500;
+                font-size: 13px;
+                border: 1px solid #e5e7eb;
+                border-radius: 6px;
+                margin-top: 5px;
+                padding-top: 10px;
+                color: #6b7280;
+            }
+        """)
         advanced_layout = QVBoxLayout()
         
         self.min_cover_check = QCheckBox("Couverture minimum garantie")
-        self.min_cover_check.setStyleSheet("padding: 5px 0;")
+        self.min_cover_check.setStyleSheet("""
+            QCheckBox {
+                padding: 5px 0;
+                font-size: 12px;
+                color: #111827;
+            }
+            QCheckBox::indicator {
+                width: 16px;
+                height: 16px;
+            }
+        """)
         advanced_layout.addWidget(self.min_cover_check)
         
         # Redondance
@@ -131,7 +208,7 @@ class ParametersWidget(QWidget):
         redundancy_layout.setContentsMargins(0, 0, 0, 0)
         
         redundancy_label = QLabel("Redondance :")
-        redundancy_label.setStyleSheet("font-weight: 500;")
+        redundancy_label.setStyleSheet("font-weight: 500; font-size: 12px; color: #111827;")
         
         self.redundancy_spin = QSpinBox()
         self.redundancy_spin.setRange(1, 5)
@@ -140,14 +217,19 @@ class ParametersWidget(QWidget):
         self.redundancy_spin.setStyleSheet("""
             QSpinBox {
                 padding: 6px;
-                border: 2px solid #d1d5db;
+                border: 1px solid #d1d5db;
                 border-radius: 4px;
                 min-width: 60px;
+                font-size: 12px;
+            }
+            QSpinBox:disabled {
+                background-color: #f3f4f6;
+                color: #9ca3af;
             }
         """)
         
         redundancy_unit = QLabel("couverture(s) par arête")
-        redundancy_unit.setStyleSheet("color: #6b7280; font-size: 13px;")
+        redundancy_unit.setStyleSheet("color: #6b7280; font-size: 12px;")
         
         redundancy_layout.addWidget(redundancy_label)
         redundancy_layout.addWidget(self.redundancy_spin)
@@ -171,22 +253,27 @@ class ParametersWidget(QWidget):
         self.solve_button.setObjectName("solve-button")
         self.solve_button.setStyleSheet("""
             QPushButton {
-                background-color: #10b981;
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, 
+                                            stop:0 #10b981, stop:1 #0da271);
                 color: white;
                 font-weight: bold;
-                padding: 15px;
+                padding: 15px 25px;
                 border-radius: 8px;
-                font-size: 16px;
+                font-size: 15px;
                 margin-top: 10px;
+                border: none;
             }
             QPushButton:hover {
-                background-color: #0da271;
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                                            stop:0 #0da271, stop:1 #0c9668);
             }
             QPushButton:pressed {
-                background-color: #0c9668;
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                                            stop:0 #0c9668, stop:1 #0b8a5f);
+                padding: 16px 25px 14px 25px;
             }
             QPushButton:disabled {
-                background-color: #9ca3af;
+                background: #9ca3af;
             }
         """)
         self.solve_button.clicked.connect(self.solve_clicked.emit)
@@ -206,31 +293,59 @@ class ParametersWidget(QWidget):
             item = QTableWidgetItem(vertex['id'])
             item.setFlags(item.flags() & ~Qt.ItemIsEditable)
             item.setTextAlignment(Qt.AlignCenter)
+            item.setFont(QFont("Segoe UI", 11, QFont.Bold))  # Police améliorée
             self.costs_table.setItem(i, 0, item)
             
             # Coût
-            cost_item = QTableWidgetItem(str(vertex.get('cost', 1.0)))
+            cost_item = QTableWidgetItem(f"{vertex.get('cost', 1.0):.2f}")
             cost_item.setTextAlignment(Qt.AlignCenter)
+            cost_item.setFont(QFont("Segoe UI", 11))  # Police améliorée
             self.costs_table.setItem(i, 1, cost_item)
             
             # Type
             type_combo = QComboBox()
             type_combo.addItems(["Normal", "Obligatoire", "Interdit"])
+            type_combo.setFont(QFont("Segoe UI", 11))  # Police améliorée
             
             # Déterminer le type actuel
             vertex_type = vertex.get('type', 'normal')
             if vertex_type == 'mandatory':
                 type_combo.setCurrentText("Obligatoire")
+                type_combo.setStyleSheet("""
+                    QComboBox {
+                        background-color: #fee2e2;
+                        color: #dc2626;
+                        font-weight: 500;
+                    }
+                """)
             elif vertex_type == 'forbidden':
                 type_combo.setCurrentText("Interdit")
+                type_combo.setStyleSheet("""
+                    QComboBox {
+                        background-color: #f3f4f6;
+                        color: #6b7280;
+                        font-weight: 500;
+                    }
+                """)
             else:
                 type_combo.setCurrentText("Normal")
+                type_combo.setStyleSheet("""
+                    QComboBox {
+                        background-color: white;
+                        color: #111827;
+                    }
+                """)
             
             self.costs_table.setCellWidget(i, 2, type_combo)
+            
+            # Définir une hauteur de ligne pour meilleure lisibilité
+            self.costs_table.setRowHeight(i, 40)
         
         # Adapter la hauteur de la table
         row_height = 40
-        self.costs_table.setMinimumHeight(min(200, 40 + len(graph_data['vertices']) * row_height))
+        header_height = self.costs_table.horizontalHeader().height()
+        table_height = header_height + len(graph_data['vertices']) * row_height
+        self.costs_table.setMinimumHeight(min(250, table_height))
     
     def get_parameters(self):
         """Récupère tous les paramètres"""
@@ -255,7 +370,8 @@ class ParametersWidget(QWidget):
             cost = 1.0
             if cost_item:
                 try:
-                    cost = float(cost_item.text())
+                    cost_text = cost_item.text().replace(',', '.')
+                    cost = float(cost_text)
                 except ValueError:
                     cost = 1.0
             
@@ -280,6 +396,12 @@ class ParametersWidget(QWidget):
     def toggle_advanced(self, checked):
         """Affiche/cache les options avancées"""
         self.advanced_group.setVisible(checked)
+        
+        # Ajuster la hauteur du groupe
+        if checked:
+            self.advanced_group.setMinimumHeight(100)
+        else:
+            self.advanced_group.setMinimumHeight(0)
     
     def clear(self):
         """Réinitialise le panneau"""
