@@ -3,10 +3,9 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout,
                              QPushButton, QButtonGroup, QRadioButton,
                              QLabel, QSpinBox, QGroupBox, QGraphicsLineItem,
                              QGraphicsEllipseItem, QGraphicsTextItem,
-                             QGraphicsItem, QGraphicsItemGroup, QToolBar,
-                             QAction, QMenu)
+                             QGraphicsItem, QGraphicsItemGroup)
 from PyQt5.QtCore import Qt, pyqtSignal, QPointF, QRectF, QLineF
-from PyQt5.QtGui import QPen, QBrush, QColor, QFont, QPainter, QPainterPath
+from PyQt5.QtGui import QPen, QBrush, QColor, QFont, QPainter
 import math
 
 class VertexItem(QGraphicsItemGroup):
@@ -174,9 +173,6 @@ class GraphWidget(QWidget):
             toolbar_layout.addWidget(btn)
             self.mode_buttons[mode] = btn
         
-        # Note: don't set the default checked button here because
-        # `set_mode` may be called before `self.view` is initialized.
-        # We'll set the default after creating the view below.
         
         toolbar_layout.addStretch()
         
@@ -248,8 +244,8 @@ class GraphWidget(QWidget):
         
         layout.addWidget(info_widget)
 
-        # Now that all UI elements exist (`self.view`, `self.info_label`, `self.help_label`),
-        # set the default mode. This will safely call `set_mode('select')`.
+        # Set default mode after view and info widgets exist so
+        # set_mode can safely access `self.view` and `self.help_label`.
         self.mode_buttons['select'].setChecked(True)
     
     def setup_scene(self):
@@ -337,9 +333,6 @@ class GraphWidget(QWidget):
         # Stocker la référence
         self.vertices[vertex_id] = vertex
         
-        # Connecter le signal de mouvement pour mettre à jour les arêtes
-        vertex.circle.dataChanged = lambda: self.update_connected_edges(vertex_id)
-        
         self.update_info()
         self.graph_changed.emit(self.get_graph_data())
     
@@ -398,19 +391,6 @@ class GraphWidget(QWidget):
             
             self.update_info()
             self.graph_changed.emit(self.get_graph_data())
-    
-    def update_connected_edges(self, vertex_id):
-        """Met à jour toutes les arêtes connectées à un sommet"""
-        if vertex_id in self.vertices:
-            vertex = self.vertices[vertex_id]
-            vertex_pos = vertex.scenePos()
-            
-            for (v1_id, v2_id), edge in self.edges.items():
-                if v1_id == vertex_id or v2_id == vertex_id:
-                    other_id = v2_id if v1_id == vertex_id else v1_id
-                    if other_id in self.vertices:
-                        other_vertex = self.vertices[other_id]
-                        edge.update_position(vertex_pos, other_vertex.scenePos())
     
     def toggle_edge_critical(self, pos):
         """Marque/démarque une arête comme critique"""

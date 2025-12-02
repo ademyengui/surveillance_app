@@ -4,11 +4,15 @@ from PyQt5.QtWidgets import (QMainWindow, QWidget, QVBoxLayout,
                              QToolBar, QAction, QStatusBar, QMessageBox)
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QIcon, QKeySequence
+from PyQt5.QtWidgets import QFileDialog
+from datetime import datetime
 
 from gui.graph_widget import GraphWidget
 from gui.parameters_widget import ParametersWidget
 from gui.results_widget import ResultsWidget
 from gui.styles import get_stylesheet
+from solver.worker import SolverWorker
+from utils.file_io import save_graph_to_file, load_graph_from_file, export_solution_to_csv
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -22,6 +26,7 @@ class MainWindow(QMainWindow):
         # Initialiser les données
         self.current_graph = None
         self.solution = None
+        self.solver_worker = None
         
         # Créer l'interface
         self.create_ui()
@@ -95,12 +100,16 @@ class MainWindow(QMainWindow):
         run_action.setShortcut(Qt.Key_F5)
         run_action.triggered.connect(self.solve_problem)
         
+        export_action = QAction("Exporter Solution", self)
+        export_action.triggered.connect(self.export_solution)
+        
         # Ajouter à la toolbar
         toolbar.addAction(new_action)
         toolbar.addAction(open_action)
         toolbar.addAction(save_action)
         toolbar.addSeparator()
         toolbar.addAction(run_action)
+        toolbar.addAction(export_action)
     
     def connect_signals(self):
         """Connecte les signaux entre les widgets"""
@@ -109,26 +118,73 @@ class MainWindow(QMainWindow):
         
         # Quand on clique sur "Résoudre"
         self.params_widget.solve_clicked.connect(self.solve_problem)
-        
-        # Quand la solution est prête
-        # (à connecter quand on aura le worker)
     
     def new_graph(self):
         """Crée un nouveau graphe vide"""
         self.graph_widget.clear_scene()
         self.params_widget.clear()
         self.results_widget.clear()
+        self.solution = None
         self.statusBar().showMessage("Nouveau graphe créé")
     
     def open_graph(self):
         """Ouvre un graphe depuis un fichier"""
-        # À implémenter avec QFileDialog
-        QMessageBox.information(self, "Info", "Fonctionnalité à implémenter")
+        filename, _ = QFileDialog.getOpenFileName(
+            self,
+            "Ouvrir un fichier de graphe",
+            "",
+            "Fichiers JSON (*.json);;Tous les fichiers (*)"
+        )
+        
+        if filename:
+            result = load_graph_from_file(filename)
+            if result:
+                graph_data, parameters, solution, metadata = result
+                
+                # Note: Vous devrez implémenter set_graph_data dans GraphWidget
+                # Pour l'instant, on affiche juste un message
+                self.statusBar().showMessage(f"Fichier chargé : {filename}")
+                QMessageBox.information(self, "Info", 
+                                       f"Fonctionnalité de chargement complète à implémenter\n"
+                                       f"Fichier: {filename}")
+            else:
+                QMessageBox.warning(self, "Erreur", "Impossible de charger le fichier.")
     
     def save_graph(self):
         """Sauvegarde le graphe dans un fichier"""
-        # À implémenter avec QFileDialog
-        QMessageBox.information(self, "Info", "Fonctionnalité à implémenter")
+        filename, _ = QFileDialog.getSaveFileName(
+            self,
+            "Sauvegarder le graphe",
+            f"surveillance_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+            "Fichiers JSON (*.json);;Tous les fichiers (*)"
+        )
+        
+        if filename:
+            graph_data = self.graph_widget.get_graph_data()
+            parameters = self.params_widget.get_parameters()
+            
+            save_data = save_graph_to_file(graph_data, parameters, self.solution, filename)
+            self.statusBar().showMessage(f"Fichier sauvegardé : {filename}")
+    
+    def export_solution(self):
+        """Exporte les résultats en CSV"""
+        if not self.solution:
+            QMessageBox.warning(self, "Avertissement", "Aucune solution à exporter.")
+            return
+        
+        filename, _ = QFileDialog.getSaveFileName(
+            self,
+            "Exporter la solution",
+            f"solution_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+            "Fichiers CSV (*.csv);;Tous les fichiers (*)"
+        )
+        
+        if filename:
+            if export_solution_to_csv(self.solution, filename):
+                self.statusBar().showMessage(f"Solution exportée : {filename}")
+                QMessageBox.information(self, "Succès", "Solution exportée avec succès !")
+            else:
+                QMessageBox.warning(self, "Erreur", "Erreur lors de l'export.")
     
     def solve_problem(self):
         """Résout le problème de couverture de sommets"""
@@ -144,49 +200,86 @@ class MainWindow(QMainWindow):
             return
         
         # Valider qu'on a des coûts
-        if not all(v['cost'] > 0 for v in graph_data['vertices']):
-            QMessageBox.warning(self, "Avertissement", 
-                               "Tous les sommets doivent avoir un coût positif !")
-            return
+        # On va mettre à jour les coûts depuis la table
+        vertex_params = params.get('vertices', {})
+        for vertex in graph_data['vertices']:
+            v_id = vertex['id']
+            if v_id in vertex_params:
+                vertex['cost'] = vertex_params[v_id]['cost']
+                vertex['type'] = vertex_params[v_id]['type']
+            else:
+                vertex['cost'] = 1.0
+                vertex['type'] = 'normal'
+        
+        # Désactiver le bouton pendant le calcul
+        self.params_widget.solve_button.setEnabled(False)
         
         # Afficher "Calcul en cours"
         self.statusBar().showMessage("Résolution en cours...")
         self.results_widget.show_loading()
         
-        # Ici on appellera le solveur Gurobi
-        # Pour l'instant, on simule
-        self.simulate_solution(graph_data, params)
+        # Créer et lancer le worker
+        self.solver_worker = SolverWorker(graph_data, params)
+        
+        # Connecter les signaux du worker
+        self.solver_worker.started.connect(self.on_solver_started)
+        self.solver_worker.finished.connect(self.on_solver_finished)
+        self.solver_worker.error.connect(self.on_solver_error)
+        
+        # Lancer le worker
+        self.solver_worker.start()
     
-    def simulate_solution(self, graph_data, params):
-        """Simule une solution (à remplacer par Gurobi)"""
-        import time
-        import random
+    def on_solver_started(self):
+        """Début de la résolution"""
+        self.statusBar().showMessage("Résolution démarrée...")
+    
+    def on_solver_finished(self, solution):
+        """Fin de la résolution avec succès"""
+        # Réactiver le bouton
+        self.params_widget.solve_button.setEnabled(True)
         
-        # Simulation d'un calcul
-        time.sleep(1)
+        # Stocker la solution
+        self.solution = solution
         
-        # Solution simulée (sélectionne aléatoirement 50% des sommets)
-        vertices = graph_data['vertices']
-        selected = random.sample([v['id'] for v in vertices], 
-                                max(1, len(vertices)//2))
-        
-        # Calcul du coût
-        total_cost = sum(v['cost'] for v in vertices if v['id'] in selected)
-        
-        # Mettre à jour l'interface
-        self.solution = {
-            'total_cost': total_cost,
-            'selected_vertices': selected,
-            'status': 'optimal',
-            'cover_details': {}  # À calculer
-        }
-        
-        self.results_widget.display_solution(self.solution)
-        self.graph_widget.highlight_solution(selected)
-        self.statusBar().showMessage(f"Solution trouvée ! Coût : {total_cost}€")
-        
-        # Afficher un message
-        QMessageBox.information(self, "Solution", 
-                               f"Solution simulée trouvée !\n"
-                               f"Coût total : {total_cost}€\n"
-                               f"Sommets sélectionnés : {len(selected)}")
+        # Afficher les résultats
+        if solution['status'] == 'optimal':
+            self.results_widget.display_solution(solution)
+            self.graph_widget.highlight_solution(solution['selected_vertices'])
+            
+            # Mettre à jour le statut
+            time_msg = f" en {solution.get('solve_time', 0):.2f} secondes"
+            self.statusBar().showMessage(
+                f"✓ Solution optimale trouvée ! Coût : {solution['total_cost']}€" + time_msg
+            )
+            
+            # Afficher un message de succès
+            QMessageBox.information(
+                self, 
+                "Solution Optimale",
+                f"Solution trouvée avec succès !\n\n"
+                f"• Coût total : {solution['total_cost']:.2f}€\n"
+                f"• Sommets sélectionnés : {len(solution['selected_vertices'])}\n"
+                f"• Temps de résolution : {solution.get('solve_time', 0):.2f}s"
+            )
+        else:
+            # Afficher un message d'erreur
+            self.statusBar().showMessage(f"⚠ {solution.get('message', 'Erreur')}")
+            self.results_widget.display_solution(solution)
+            
+            QMessageBox.warning(
+                self,
+                "Problème de résolution",
+                f"Le solveur a rencontré un problème :\n\n"
+                f"Status : {solution['status']}\n"
+                f"Message : {solution.get('message', 'Aucun détail')}"
+            )
+    
+    def on_solver_error(self, error_message):
+        """Erreur pendant la résolution"""
+        self.params_widget.solve_button.setEnabled(True)
+        self.statusBar().showMessage(f"❌ Erreur : {error_message}")
+        QMessageBox.critical(
+            self,
+            "Erreur du Solveur",
+            f"Une erreur est survenue pendant la résolution :\n\n{error_message}"
+        )
