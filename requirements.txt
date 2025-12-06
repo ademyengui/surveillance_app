@@ -1,4 +1,4 @@
 PyQt5>=5.15.0
-gurobipy>=9.5.0
+gurobipy>=10.0.0
 networkx>=2.6.0
 matplotlib>=3.5.0

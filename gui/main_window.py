@@ -283,3 +283,75 @@ class MainWindow(QMainWindow):
             "Erreur du Solveur",
             f"Une erreur est survenue pendant la résolution :\n\n{error_message}"
         )
+    
+        def on_solver_finished(self, solution):
+            """Fin de la résolution avec succès"""
+            # Réactiver le bouton
+            self.params_widget.solve_button.setEnabled(True)
+            
+            # Stocker la solution
+            self.solution = solution
+            
+            # Afficher les résultats
+            status = solution['status']
+            
+            if status in ['optimal', 'suboptimal']:
+                self.results_widget.display_solution(solution)
+                self.graph_widget.highlight_solution(solution['selected_vertices'])
+                
+                # Message selon le statut
+                if status == 'optimal':
+                    prefix = "✓ Solution OPTIMALE"
+                else:
+                    prefix = "⚠ Solution SOUS-OPTIMALE"
+                
+                # Informations supplémentaires
+                gap_info = ""
+                if 'gap' in solution and solution['gap'] > 0:
+                    gap_info = f" (Gap: {solution['gap']*100:.2f}%)"
+                
+                time_msg = f" en {solution.get('solve_time', 0):.2f} secondes"
+                
+                status_msg = f"{prefix} ! Coût : {solution['total_cost']:.2f}€{gap_info}{time_msg}"
+                self.statusBar().showMessage(status_msg)
+                
+                # Afficher un message de succès
+                msg_title = "Solution Optimale" if status == 'optimal' else "Solution Sous-Optimale"
+                msg_icon = QMessageBox.Information if status == 'optimal' else QMessageBox.Warning
+                
+                QMessageBox(msg_icon, msg_title,
+                        f"{prefix} trouvée !\n\n"
+                        f"• Coût total : {solution['total_cost']:.2f}€\n"
+                        f"• Sommets sélectionnés : {len(solution['selected_vertices'])}\n"
+                        f"• Temps de résolution : {solution.get('solve_time', 0):.2f}s\n"
+                        f"• Gap d'optimalité : {solution.get('gap', 0)*100:.2f}%\n\n"
+                        f"{solution.get('message', '')}").exec_()
+                        
+            elif status == 'infeasible':
+                self.statusBar().showMessage("❌ Problème insoluble avec les contraintes actuelles")
+                self.results_widget.display_solution(solution)
+                
+                QMessageBox.warning(
+                    self,
+                    "Problème Insoluble",
+                    f"Le problème est insoluble avec les contraintes données.\n\n"
+                    f"Raisons possibles :\n"
+                    f"• Budget trop faible\n"
+                    f"• Trop de sommets interdits\n"
+                    f"• Contradiction entre sommets obligatoires et arêtes critiques\n\n"
+                    f"Message : {solution.get('message', '')}"
+                )
+                
+            elif status == 'error':
+                self.statusBar().showMessage(f"❌ Erreur : {solution.get('message', '')[:50]}...")
+                self.results_widget.display_solution(solution)
+                
+                QMessageBox.critical(
+                    self,
+                    "Erreur du Solveur",
+                    f"Une erreur est survenue :\n\n{solution.get('message', 'Erreur inconnue')}"
+                )
+                
+            else:
+                self.statusBar().showMessage(f"⚠ {solution.get('message', 'Statut inconnu')}")
+                self.results_widget.display_solution(solution)

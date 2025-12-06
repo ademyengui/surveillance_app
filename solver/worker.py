@@ -11,6 +11,7 @@ class SolverWorker(QThread):
     started = pyqtSignal()
     finished = pyqtSignal(dict)
     error = pyqtSignal(str)
+    progress = pyqtSignal(int, str)  # Progression et message
     
     def __init__(self, graph_data, parameters):
         super().__init__()
@@ -21,14 +22,15 @@ class SolverWorker(QThread):
         """Exécute le solveur dans le thread"""
         try:
             self.started.emit()
+            self.progress.emit(10, "Initialisation...")
+            time.sleep(0.1)
             
-            # Simuler un temps de calcul (pour montrer que c'est asynchrone)
-            time.sleep(0.5)
-            
-            # Importer dynamiquement pour éviter les problèmes si Gurobi n'est pas installé
+            # Essayer d'utiliser Gurobi
             try:
                 from .vertex_cover_solver import VertexCoverSolver
                 solver = VertexCoverSolver()
+                
+                self.progress.emit(30, "Modélisation avec Gurobi...")
                 
                 # Résoudre le problème
                 solution = solver.solve(
@@ -37,12 +39,37 @@ class SolverWorker(QThread):
                     self.parameters
                 )
                 
+                self.progress.emit(90, "Solution trouvée !")
+                time.sleep(0.1)
+                self.progress.emit(100, "Terminé")
+                
                 self.finished.emit(solution)
                 
             except ImportError as e:
-                self.error.emit(f"Erreur d'importation du solveur: {e}")
+                # Gurobi non disponible, utiliser l'algorithme glouton
+                self.progress.emit(30, "Gurobi non trouvé, utilisation de l'algorithme glouton...")
+                
+                from .greedy_solver import GreedyVertexCoverSolver
+                solver = GreedyVertexCoverSolver()
+                
+                solution = solver.solve(
+                    self.graph_data['vertices'],
+                    self.graph_data['edges'],
+                    self.parameters
+                )
+                
+                # Ajouter un message indiquant que c'est une solution gloutonne
+                if solution['status'] == 'optimal':
+                    solution['message'] = "Solution gloutonne (approximative) - Gurobi non installé"
+                
+                self.progress.emit(90, "Solution gloutonne trouvée")
+                time.sleep(0.1)
+                self.progress.emit(100, "Terminé")
+                
+                self.finished.emit(solution)
+                
             except Exception as e:
-                self.error.emit(f"Erreur lors de la résolution: {e}")
+                self.error.emit(f"Erreur lors de la résolution: {str(e)}")
             
         except Exception as e:
             self.error.emit(f"Erreur dans le worker: {str(e)}")
