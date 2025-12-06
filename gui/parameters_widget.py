@@ -411,3 +411,66 @@ class ParametersWidget(QWidget):
         self.redundancy_spin.setValue(1)
         self.advanced_check.setChecked(False)
         self.advanced_group.setVisible(False)
+    
+        def set_parameters(self, parameters):
+            """Définit les paramètres depuis un dictionnaire"""
+            # Budget
+            budget = parameters.get('budget')
+            if budget:
+                self.budget_spin.setValue(int(budget))
+            else:
+                self.budget_spin.setValue(0)
+            
+            # Options avancées
+            advanced = parameters.get('advanced', {})
+            if advanced.get('min_cover', False):
+                self.advanced_check.setChecked(True)
+                self.min_cover_check.setChecked(True)
+                self.redundancy_spin.setValue(advanced.get('redundancy', 1))
+            else:
+                self.advanced_check.setChecked(False)
+                self.min_cover_check.setChecked(False)
+                self.redundancy_spin.setValue(1)
+            
+            # Mettre à jour les types des sommets dans la table
+            vertex_params = parameters.get('vertices', {})
+            for i in range(self.costs_table.rowCount()):
+                vertex_id = self.costs_table.item(i, 0).text()
+                if vertex_id in vertex_params:
+                    # Type
+                    type_combo = self.costs_table.cellWidget(i, 2)
+                    vertex_type = vertex_params[vertex_id].get('type', 'normal')
+                    
+                    if vertex_type == 'mandatory':
+                        type_combo.setCurrentText("Obligatoire")
+                        type_combo.setStyleSheet("""
+                            QComboBox {
+                                background-color: #fee2e2;
+                                color: #dc2626;
+                                font-weight: 500;
+                            }
+                        """)
+                    elif vertex_type == 'forbidden':
+                        type_combo.setCurrentText("Interdit")
+                        type_combo.setStyleSheet("""
+                            QComboBox {
+                                background-color: #f3f4f6;
+                                color: #6b7280;
+                                font-weight: 500;
+                            }
+                        """)
+                    else:
+                        type_combo.setCurrentText("Normal")
+                        type_combo.setStyleSheet("""
+                            QComboBox {
+                                background-color: white;
+                                color: #111827;
+                            }
+                        """)
+                    
+                    # Coût
+                    cost = vertex_params[vertex_id].get('cost', 1.0)
+                    cost_item = QTableWidgetItem(f"{cost:.2f}")
+                    cost_item.setTextAlignment(Qt.AlignCenter)
+                    cost_item.setFont(QFont("Segoe UI", 11))
+                    self.costs_table.setItem(i, 1, cost_item)

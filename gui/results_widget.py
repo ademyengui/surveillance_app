@@ -2,10 +2,12 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout,
                              QLabel, QTextEdit, QTableWidget,
                              QTableWidgetItem, QPushButton, QGroupBox,
                              QHeaderView, QProgressBar)
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import (Qt, pyqtSignal)
 import json
 
 class ResultsWidget(QWidget):
+    export_json_requested = pyqtSignal()
+    export_csv_requested = pyqtSignal()
     def __init__(self):
         super().__init__()
         self.create_ui()
@@ -315,3 +317,10 @@ class ResultsWidget(QWidget):
         """Copie le résumé dans le presse-papier"""
         # À implémenter avec QClipboard
         print("Copie - à implémenter")
+    
+    def export_json(self):
+        """Émet un signal pour exporter en JSON"""
+        self.export_json_requested.emit()
+    def export_csv(self):
+        """Émet un signal pour exporter en CSV"""
+        self.export_csv_requested.emit()

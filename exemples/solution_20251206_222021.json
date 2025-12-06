@@ -1,0 +1,224 @@
+{
+  "metadata": {
+    "app_name": "Surveillance Network Optimizer",
+    "export_date": "2025-12-06T22:20:27.583983",
+    "export_type": "solution",
+    "version": "2.0"
+  },
+  "solution": {
+    "status": "optimal",
+    "total_cost": 4.0,
+    "selected_vertices": [
+      "V2",
+      "V4",
+      "V7",
+      "V8"
+    ],
+    "cover_details": {
+      "V8-V9": [
+        "V8"
+      ],
+      "V4-V9": [
+        "V4"
+      ],
+      "V7-V9": [
+        "V7"
+      ],
+      "V5-V7": [
+        "V7"
+      ],
+      "V1-V7": [
+        "V7"
+      ],
+      "V1-V2": [
+        "V2"
+      ],
+      "V2-V3": [
+        "V2"
+      ],
+      "V2-V6": [
+        "V2"
+      ],
+      "V4-V6": [
+        "V4"
+      ],
+      "V5-V8": [
+        "V8"
+      ]
+    },
+    "solve_time": 0.018696308135986328,
+    "gap": 0.0,
+    "num_selected": 4,
+    "detailed_costs": {
+      "V2": 1.0,
+      "V4": 1.0,
+      "V7": 1.0,
+      "V8": 1.0
+    },
+    "message": "Solution optimale trouvée par Gurobi (gap: 0.00%)"
+  },
+  "graph_data": {
+    "vertices": [
+      {
+        "id": "V1",
+        "x": -170.0,
+        "y": -419.0,
+        "cost": 1.0,
+        "type": "normal"
+      },
+      {
+        "id": "V2",
+        "x": -2.0,
+        "y": -395.0,
+        "cost": 1.0,
+        "type": "selected_solution"
+      },
+      {
+        "id": "V3",
+        "x": -181.0,
+        "y": -324.0,
+        "cost": 1.0,
+        "type": "normal"
+      },
+      {
+        "id": "V4",
+        "x": -244.0,
+        "y": -394.0,
+        "cost": 1.0,
+        "type": "selected_solution"
+      },
+      {
+        "id": "V5",
+        "x": 35.0,
+        "y": -450.0,
+        "cost": 1.0,
+        "type": "normal"
+      },
+      {
+        "id": "V6",
+        "x": -15.0,
+        "y": -336.0,
+        "cost": 1.0,
+        "type": "normal"
+      },
+      {
+        "id": "V7",
+        "x": -112.0,
+        "y": -481.0,
+        "cost": 1.0,
+        "type": "selected_solution"
+      },
+      {
+        "id": "V8",
+        "x": -270.0,
+        "y": -509.0,
+        "cost": 1.0,
+        "type": "selected_solution"
+      },
+      {
+        "id": "V9",
+        "x": -298.0,
+        "y": -435.0,
+        "cost": 1.0,
+        "type": "normal"
+      }
+    ],
+    "edges": [
+      {
+        "from": "V8",
+        "to": "V9",
+        "critical": false
+      },
+      {
+        "from": "V4",
+        "to": "V9",
+        "critical": false
+      },
+      {
+        "from": "V7",
+        "to": "V9",
+        "critical": false
+      },
+      {
+        "from": "V5",
+        "to": "V7",
+        "critical": false
+      },
+      {
+        "from": "V1",
+        "to": "V7",
+        "critical": false
+      },
+      {
+        "from": "V1",
+        "to": "V2",
+        "critical": false
+      },
+      {
+        "from": "V2",
+        "to": "V3",
+        "critical": false
+      },
+      {
+        "from": "V2",
+        "to": "V6",
+        "critical": false
+      },
+      {
+        "from": "V4",
+        "to": "V6",
+        "critical": false
+      },
+      {
+        "from": "V5",
+        "to": "V8",
+        "critical": false
+      }
+    ]
+  },
+  "parameters": {
+    "budget": null,
+    "advanced": {
+      "min_cover": false,
+      "redundancy": 1
+    },
+    "vertices": {
+      "V1": {
+        "cost": 1.0,
+        "type": "normal"
+      },
+      "V2": {
+        "cost": 1.0,
+        "type": "normal"
+      },
+      "V3": {
+        "cost": 1.0,
+        "type": "normal"
+      },
+      "V4": {
+        "cost": 1.0,
+        "type": "normal"
+      },
+      "V5": {
+        "cost": 1.0,
+        "type": "normal"
+      },
+      "V6": {
+        "cost": 1.0,
+        "type": "normal"
+      },
+      "V7": {
+        "cost": 1.0,
+        "type": "normal"
+      },
+      "V8": {
+        "cost": 1.0,
+        "type": "normal"
+      },
+      "V9": {
+        "cost": 1.0,
+        "type": "normal"
+      }
+    }
+  }
+}

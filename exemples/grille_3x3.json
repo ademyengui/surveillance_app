@@ -1,0 +1,43 @@
+{
+  "metadata": {
+    "app_name": "Surveillance Network Optimizer",
+    "save_date": "2024-12-05T14:30:00",
+    "problem_type": "vertex_cover",
+    "version": "2.0",
+    "description": "Exemple de réseau en grille 3x3"
+  },
+  "graph_data": {
+    "vertices": [
+      {"id": "V1", "x": -100, "y": -100, "cost": 10.0, "type": "normal"},
+      {"id": "V2", "x": 0, "y": -100, "cost": 15.0, "type": "normal"},
+      {"id": "V3", "x": 100, "y": -100, "cost": 12.0, "type": "normal"},
+      {"id": "V4", "x": -100, "y": 0, "cost": 8.0, "type": "normal"},
+      {"id": "V5", "x": 0, "y": 0, "cost": 20.0, "type": "mandatory"},
+      {"id": "V6", "x": 100, "y": 0, "cost": 5.0, "type": "normal"},
+      {"id": "V7", "x": -100, "y": 100, "cost": 18.0, "type": "normal"},
+      {"id": "V8", "x": 0, "y": 100, "cost": 7.0, "type": "normal"},
+      {"id": "V9", "x": 100, "y": 100, "cost": 25.0, "type": "forbidden"}
+    ],
+    "edges": [
+      {"from": "V1", "to": "V2", "critical": false},
+      {"from": "V2", "to": "V3", "critical": false},
+      {"from": "V1", "to": "V4", "critical": false},
+      {"from": "V2", "to": "V5", "critical": true},
+      {"from": "V3", "to": "V6", "critical": false},
+      {"from": "V4", "to": "V5", "critical": false},
+      {"from": "V5", "to": "V6", "critical": false},
+      {"from": "V4", "to": "V7", "critical": false},
+      {"from": "V5", "to": "V8", "critical": true},
+      {"from": "V6", "to": "V9", "critical": false},
+      {"from": "V7", "to": "V8", "critical": false},
+      {"from": "V8", "to": "V9", "critical": false}
+    ]
+  },
+  "parameters": {
+    "budget": 50,
+    "advanced": {
+      "min_cover": true,
+      "redundancy": 2
+    }
+  }
+}
